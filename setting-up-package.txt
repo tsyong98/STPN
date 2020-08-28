@@ -1,29 +1,29 @@
 https://packaging.python.org/tutorials/packaging-projects/
 
-# Create Folder Structure
+================ Create Folder Structure ================
 Source_dir/GitHub_dir
 	Package_folder
 		__init__.py
 		<code>.py
 
-# Create:
+================ Create ================
 Readme.md, LICENSE
 
-# Ensure latest setuptools, wheel, and twine version:
+================ Ensure latest setuptools, wheel, and twine version ================
 python -m pip install --user --upgrade setuptools wheel twine
 
-# Create wheel and dist
+================ Create wheel and dist ================
 python setup.py sdist bdist_wheel
 
-# Create account in Test PyPi and PyPi
+================ Create account in Test PyPi and PyPi ================
 
-# Upload the package to testpypi:
+================ Upload the package to testpypi ================
 python -m twine upload --repository testpypi dist/*
 
 OR to REAL PyPi:
 python -m twine upload dist/*
 
-# Push it to GitHub
+================ Push it to GitHub ================
 git add .
 git commit -m "Commit Message"
 git tag -a 0.0.2 -m "Hello World"
@@ -31,19 +31,19 @@ git push origin --tags
 
 
 
-# Create virtual env to test install
+================ Create virtual env to test install ================
 conda create -n test_pypi python pip
 
 
 
-# Install Package from TestPyPi:
+================ Install Package from TestPyPi ================
 python -m pip install --index-url https://test.pypi.org/simple/ --no-deps STPN-beta
 
 OR from REAL PyPi:
 pip install STPN-beta
 
 
-# Clone specific tag
+================ Clone specific tag ================
 git clone --depth 1 --branch <tag_name> <repo_url>
 ''' --depth 1 avoid downloading non-current commits ''' 
 
