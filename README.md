@@ -1,2 +1,2 @@
 # STPN
-This is the homepage for SpatioTemporal Pattern Network (STPN) PyPi releases
+This is the official homepage for SpatioTemporal Pattern Network (STPN) PyPi releases
