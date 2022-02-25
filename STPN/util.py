@@ -20,7 +20,7 @@ Prallellize thresh_opt()
 
 '''
 
-def MEP(data, numparts):
+def __MEP(data, numparts):
 	num_per_part = np.round(len(data)/numparts)
 	data = np.sort(data)
 	boundaries = []
@@ -31,7 +31,7 @@ def MEP(data, numparts):
 	return np.unique(boundaries)
 
 
-def unique_boundaries(data):
+def __unique_boundaries(data):
 	unique = np.unique(data)
 	boundaries = unique + 1e-8
 	boundaries = boundaries[:-1]
@@ -40,11 +40,12 @@ def unique_boundaries(data):
 	return boundaries
 
 
-def uniform_boundaries(data, numparts):
-
-	# Get code from the original pipeline of env infer
-	boundaries = []
-
+def __uniform_boundaries(data, numparts):
+	max_ = np.max(data)
+	min_ = np.min(data)
+	range_ = max_ - min_
+	interval = range_/numparts
+	boundaries = np.arange(1,numparts)*interval + min_
 	return boundaries
 
 
@@ -55,11 +56,11 @@ def discretize(data, mode="MEP", numparts=2):
 	assert numparts>1, f"numparts should be >= 2"
 
 	if mode == "uniform":
-		boundaries = uniform_boundaries(data, numparts)
+		boundaries = __uniform_boundaries(data, numparts)
 	elif mode == "MEP":
-		boundaries = MEP(data, numparts)
+		boundaries = __MEP(data, numparts)
 	elif mode == "unique":
-		boundaries = unique_boundaries(data)
+		boundaries = __unique_boundaries(data)
 
 	return boundaries
 
@@ -320,3 +321,12 @@ def print_occ_percent(occ):
 	unocc_percent = (len(unoccupied_index)/len(occ))*100
 	print("%3.2f percent is occupied"%(occ_percent))
 	print("%3.2f percent is unoccupied"%(unocc_percent))
+
+
+
+# Complete this
+__all__ = [
+"MEP",
+"unique_boundaries"
+]
+
