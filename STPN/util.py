@@ -109,7 +109,6 @@ def symbolize(data, boundaries):
 	placeholder_len = len(str(len(boundaries)+1))
 	sym_data = np.asarray(["0"*placeholder_len for _ in range(len(data))])
 
-
 	if len(boundaries) == 1:
 		sym_data[data <= boundaries[0]] = "1"
 		sym_data[data > boundaries[0]] = "2"
@@ -128,47 +127,77 @@ def symbolize(data, boundaries):
 
 
 
-def state_gen(sym_data, depth, tau):
-
+def state_gen(sym_data, depth, tau, verbosity=0):
+	'''
+	Num sym in each state = depth + 1
+	'''
 	depth_sym_data = []
 
-	# depth moving window
-# 	for i in range(len(sym_data)-tau): # 自动去尾
-	for i in range(len(sym_data)-depth-tau+1): # 自动去尾 (ie: the last prediction will still be in the timeframe of the input data!)
-# 		print(i)
-		depth_sym_data.append(','.join(sym_data[i:i+depth])) # num sym = depth + 1
+	# Depth moving window
+	for i in range(len(sym_data)-depth-tau): # 自动去尾 (ie: the last prediction will still be in the timeframe of the input data!)
+		if verbosity > 0:
+			print('Current depth window starting index:', i)
+		depth_sym_data.append(','.join(sym_data[i:i+depth+1]))
 
 	return depth_sym_data
 
 
-
-def compute_TM(state_data, occupancy):
+def compute_TM(state_data, target_data, return_counts=False):
 	'''
-	List unique state
-	Find their index
-	Create temp OCC list uing those index
-	Compute sum of the temp occ list
-	Divide by the temp list len to get only OCCUPIED probability
+	List unique state and targest
+	for each unique state:
+		find targets for each state
+		count unique targets
+		fill in the TM with probabilities and counts
 	'''
 	state_data = np.asarray(state_data)
-	occupancy = np.asarray(occupancy)
+	target_data = np.asarray(target_data)
 
-	TM = {}
-	states = np.unique(state_data)
+	# Initialize Trans. Mat. Placeholder
+	TM_p = {} # Probabilities Dict.
+	if return_counts:
+		TM_c = {} # Counts Dict.
+
+	# Find unique states and targets
+	states = np.unique(state_data) # Auto sorts the states in ascending order
+	targets = np.unique(target_data)
 
 	for state in states:
-		idx = np.argwhere(state_data == state)
-		idx = [item for sublist in idx for item in sublist]
-		temp_occ = occupancy[idx]
-		occ_prob = np.sum(temp_occ)/len(temp_occ)
-		TM[state] = occ_prob # only OCCUPIED probability
+		TM_p[state] = [0.0 for _ in range(len(targets))] # Probabilities Placeholder
+		if return_counts:
+			TM_c[state] = [0.0 for _ in range(len(targets))] # Counts Placeholder
+		idx = np.argwhere(state_data == state).flatten() # Idx for current state
+		temp_target = target_data[idx] # Selected target list for current state
+		unique_temp_target, counts = np.unique(temp_target,return_counts=True) # Unique target for current state's targets
 
-	return TM
+		for (u,c) in zip(unique_temp_target,counts):
+			idx = np.argwhere(targets == u).flatten()[0] # return idx of where this count should be added
+			TM_p[state][idx] = c # Counts
+			if return_counts:
+				TM_c[state][idx] = c
+		TM_p[state] = TM_p[state]/np.sum(TM_p[state]) # Compute probabilities
+
+	if return_counts:
+		return TM_p, TM_c, targets # Return probability, counts and targets
+	else:
+		return TM_p, targets # Return probability and targets
 
 
+def _get_close_match(state, existing_states):
+	# Match starting from the first symbol to the last
+	
+	# To replace difflib.get_close_matches()?
 
-# Work for BINARY TM computed by both compute_TM() and pd.crosstab()
-def inference(states, TM, mode="ffill",verbose=0):
+	# Example debatable case:
+	# If state ['1,2,3'] DNE, 
+	# difflib.get_close_matches() gives ['2,2,3'], 
+	# when ['1,2,2'] is available
+
+	close_match = 0
+	return close_match
+
+
+def inference(states, TM, targets, mode="ffill",verbose=0):
 	'''
 	==== mode ====
 	"ffill": forward fill the prediction if state DNE
@@ -179,54 +208,34 @@ def inference(states, TM, mode="ffill",verbose=0):
 	1: print prediction details when state DNE
 	'''
 	pred = []
-	for index,state in enumerate(states):
-		try:
-			pred.append(TM[state]) # Infer from training states
-		except:
+	for s, state in enumerate(states):
+		if state in TM.keys():
+			idx = np.argmax(TM[state])
+			pred.append(int(targets[idx]))
+		else:
 			if mode == "ffill":
-				if verbose == 1:
-					print(f"State {state} DNE, forwarding previous prediction")
-				pred.append(pred[-1]) # If state doesn't exist, take previous states's occ
-			
+				if len(pred) > 0:
+					if verbose == 1:
+						print(f"State {state} DNE, forwarding previous prediction.")
+					pred.append(pred[-1]) # If state doesn't exist, take previous states's pred
+				else: # If pred. is empty, ie: no previous pred.
+					print(f"FIRST state DNE, ffill not possible, using mode=='close' for this state instead...")
+					close_match = difflib.get_close_matches(state, TM.keys(), 1, 0)[0]
+					if verbose == 1:
+						print(f"Using close match: {close_match}")
+					idx = np.argmax(TM[close_match])
+					pred.append(int(targets[idx]))
 			elif mode == "close":
-				close_match = difflib.get_close_matches(state, TM.columns.values, 1, 0) # TM.columns.values might be different for dict.
+				close_match = difflib.get_close_matches(state, TM.keys(), 1, 0)[0]
+				print(close_match)
 				if verbose == 1:
-					print("state:",state, "close_match:",close_match[0])
-				
-				pred.append(int(TM[close_match].idxmax()))
+					print(f"State '{state}' DNE, using close match: {close_match}")
 
-	return pred
-	# return [TM[state]  for state in states]
+				idx = np.argmax(TM[close_match])
+				pred.append(int(targets[idx]))
+	return np.asarray(pred)
 
-
-
-def inference_multi(states, TM):
-	# real_APs_RPs[x][x]["9,9,6,4,4,5"].idxmax()
-	pred = []
-	for state in states:
-		close_match = difflib.get_close_matches(state, TM.columns.values, 1, 0) # TM.columns.values might be different for dict.
-		print("state:",state, "close_match:",close_match)
-		print(close_match[0])
-		pred.append(int(TM[close_match].idxmax()))
-		# A
-		# try:
-		# 	pred.append(int(TM[state].idxmax()))
-		# except:
-		# 	close_match = difflib.get_close_matches(state, TM.columns.values, 1, 0) # TM.columns.values might be different for dict.
-		# 	print("state:",state, "close_match:",close_match)
-		# 	print(close_match[0])
-		# 	A
-		# 	pred.append(int(TM[close_match].idxmax()))
-
-
-			# try:
-			# 	pred.append(pred[-1])
-			# except:
-			# 	pred.append(-1)
-	# return [int(TM[state].idxmax()) for state in states]
-	return pred
-
-
+# For binary only
 def thresh_opt(occ_prob, true_occ):
 
 	threshold = np.unique(occ_prob) + 1e-8 # multiple thresholds
@@ -273,8 +282,8 @@ def prob_thresh(occ_prob, thresh):
 	return pred
 
 
-
-def eval_(truth,pred):
+# Binary Only
+def eval_(truth, pred, target_names, save_resu=False):
 	'''
 	Returns dictionary containing accuracy, confusion matrix and tn_fp_fn_tp
 
@@ -282,6 +291,8 @@ def eval_(truth,pred):
 	temp = np.sum(abs(pred - truth))
 	acc = 1 - (temp/len(truth))
 	'''
+	target_names = [str(i) for i in target_names]
+
 	print('===========================================================')
 	acc = accuracy_score(truth,pred)*100
 
@@ -292,7 +303,7 @@ def eval_(truth,pred):
 	tn_fp_fn_tp = np.asarray(tn_fp_fn_tp)
 	# print("tn_fp_fn_tp：",tn_fp_fn_tp)
 
-	clf_rep = classification_report(truth,pred, target_names=['Unoccupied', 'Occupied']) # precision, recall, f1-score, support(num samples?)
+	clf_rep = classification_report(truth,pred, target_names=target_names) # precision, recall, f1-score, support(num samples?)
 	
 	print(clf_rep)
 	print("%.2f(%s)"%(acc,tn_fp_fn_tp)) # for ppt table record
@@ -326,7 +337,12 @@ def print_occ_percent(occ):
 
 # Complete this
 __all__ = [
-"MEP",
-"unique_boundaries"
+"discretize",
+"visualize_bounds",
+"symbolize",
+"state_gen",
+"compute_TM",
+"inference",
+"eval_"
 ]
 
