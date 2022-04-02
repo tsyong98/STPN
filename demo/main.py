@@ -77,7 +77,7 @@ data = pd.read_csv("datatest.csv",index_col=0)
 
 # Generate boundaries
 boundaries = discretize(data['Temperature'].values, mode="uniform", numparts=5)
-print(boundaries)
+# print(boundaries)
 
 # Visualize boundaries
 # visualize_bounds(data['Temperature'].values, boundaries)
@@ -121,7 +121,12 @@ occ_pred = inference(state, TM_binary, binary_targets, mode="ffill", verbose=1)
 temp_pred = inference(state, TM_multi, multi_targets, mode="ffill", verbose=1)
 
 # Evaluate inference results
-occ_acc = eval_(occupancy, occ_pred, binary_targets)
-temp_acc = eval_(temperature, temp_pred, multi_targets)
+# occ_results = eval(occupancy, occ_pred, binary_targets, save_resu=False)
+# plot_confusion_matrix(occ_results['cm'],binary_targets)
+
+temp_results = eval(temperature, temp_pred, multi_targets, save_resu=False, print_cls_acc=False)
+plot_confusion_matrix(temp_results['cm'],multi_targets)
+
+
 
 
