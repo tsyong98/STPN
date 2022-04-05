@@ -10,14 +10,18 @@ Source_dir/GitHub_dir
 Readme.md, LICENSE
 
 ================ Ensure latest setuptools, wheel, and twine version ================
-python -m pip install --user --upgrade setuptools wheel twine
+python -m pip install --user --upgrade setuptools wheel twine build
 
-================ Create wheel and dist ================
+================ Create wheel and dist (setup.py install is outdated? What is this use for?) ================
+python -m build
+
+OLD(?):
 python setup.py sdist bdist_wheel
+
 
 ================ Create account in Test PyPi and PyPi ================
 
-================ Upload the package to testpypi ================
+================ Upload the package to testpypi or PyPi ================
 python -m twine upload --repository testpypi dist/*
 
 OR to REAL PyPi:
@@ -27,13 +31,14 @@ python -m twine upload dist/*
 git add .
 git commit -m "Commit Message"
 git tag -a 0.0.2 -m "Hello World"
-git push origin --tags
+git push origin --tags # Push to a repo tag
+git push  # Push to repo
 
 
 
 ================ Create virtual env to test install ================
 conda create -n test_pypi python pip
-
+conda activate test_pypi
 
 
 ================ Install Package from TestPyPi ================
@@ -47,3 +52,32 @@ pip install STPN-beta
 git clone --depth 1 --branch <tag_name> <repo_url>
 ''' --depth 1 avoid downloading non-current commits ''' 
 
+
+
+
+
+================ Package dependencies ================
+# Install the packages dependencies as users do "pip install stpn"
+https://setuptools.pypa.io/en/latest/userguide/dependency_management.html
+
+Specify argument in setuptools.setup() in setup.py:
+install_requires=[
+        'numpy', 
+        'pandas',
+        'matplotlib',
+        'sklearn'
+    ]
+
+
+
+
+
+Step:
+- Make changes to the STPN codes: mainly will need to change the util.py in demo/ , after making changes, copy it to STPN/
+- Get latest pip: python -m pip install --upgrade pip
+- Update setup.py version number
+- Create wheel and distribution
+- Open the link for reference: https://packaging.python.org/tutorials/packaging-projects/
+- Make sure latest setuptools, wheel, and twine version
+- Upload to GitHub with tag
+- Upload to PyPi
